@@ -2,12 +2,26 @@
   visibility: hidden;
 }*/
 
+
 #box > div {
   font-size: 1.8rem;
   text-align: center;
   font-weight: 700;
   border: solid 0.1em #777;
-  background: linear-gradient(to left, var(--player0-color), #8888 20%, #8888 80%, var(--player1-color));
+  background: 
+    linear-gradient(to left, var(--player0-color), #8888 20%, #8888 80%, var(--player1-color));
+/*  width: 270px;
+  height: 120px;
+  padding-top: 25px;
+    conic-gradient(
+      #79838997 0.25turn,
+      #c3c1a799 0.25turn 0.5turn,
+      #79838997 0.5turn 0.75turn,
+      #c3c1a799 0.75turn
+    ) top left / 20% 50% repeat,*/
+/*    linear-gradient(to left, var(--player0-color), #8888 20%, #8888 80%, var(--player1-color)),*/
+    ;
+
 }
 
 #box .Piece {

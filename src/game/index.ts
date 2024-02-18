@@ -39,6 +39,27 @@ const setupGrid = {
           ],
 };
 
+// for other boards, will have to just change this to number 
+interface SkirmaLocation {
+  row: 1|2|3|4|5|6|7|8|9;
+  column: 1|2|3|4|5|6|7|8|9;
+}
+
+// STUB: really would prefer this took figures in role &promote, but ... 
+interface SkimaMove {
+  player: SkirmaPlayer;
+  role: string;
+  from: SkirmaLocation;
+  to: SkirmaLocation;
+  capture: boolean;
+  promote?: string;
+}
+
+// not sure i need this
+interface SkirmaVector {
+  v: [number, number];
+}
+
 export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   /**
    * Any properties of your players that are specific to your game go here
@@ -123,7 +144,6 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
     const rabble = this.zoneLows().filter(f => (!f.agentOf || f.agentOf === this));
     return this.highs().concat(this.agents()).concat(rabble);
   }
-
 }
 
 class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
@@ -131,6 +151,39 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
    * Any overall properties of your game go here
    */
   phase: number = 0;
+
+  readonly moveLog: [] = [];
+  // readonly moveLog: SkirmaMove[] = [];
+
+  recordMove (move:SkirmaMove) {
+    this.moveLog.push(move);
+    console.log(`recorded move number ${this.moveLog.length}: ${Figure.letter(move.role)}` +
+       Square.toLocString(move.from) +
+       (move.capture ? 'x' : '-') +
+       Square.toLocString(move.to) +
+       (move.promote ? '=' + Figure.letter(move.promote) : '')
+       );
+  }
+
+  amendMove (diff:Partial<SkirmaMove>) {
+    if (this.moveLog.length) {
+      const old = this.moveLog.pop();
+      const move = {...old, ...diff}
+      this.moveLog.push(move);
+      console.log(`amended move number ${this.moveLog.length}:  ${Figure.letter(move.role)}` +
+         Square.toLocString(move.from) +
+         (move.capture ? 'x' : '-') +
+         Square.toLocString(move.to) +
+       (move.promote ? '=' + Figure.letter(move.promote) : '')
+         );
+    } else {
+      this.recordMove(diff);
+    }
+  }
+
+  lastMove () {
+    return this.moveLog.at(-1);
+  }
 }
 
 const { Space, Piece } = createBoardClasses<SkirmaPlayer, SkirmaBoard>();
@@ -142,8 +195,20 @@ export { Space };
  */
 
 export class Square extends Space {
+  static toLocString (loc: SkirmaLocation) {
+    return '?abcdefghi'.charAt(loc.column) + (boardSize + 1 - loc.row);
+  }
+
+  // loc (): SkirmaLocation {
+  loc () {
+    if (! this.row && this.column) console.log(`this has tr ${this.row} tc ${this.column} fwiw, which is bad for `, this);
+    const {row, column} = this;
+    return ({row, column});
+  }
+
   locString (): string {
-    return 'abcdefghi'.at(this.column) + (boardSize + 1 - this.row);
+    return Square.toLocString(this);
+    // return 'abcdefghi'.at(this.column) + (boardSize + 1 - this.row);
   }
 
   isEdge (): boolean {
@@ -162,12 +227,24 @@ export abstract class Figure extends Piece {
   readonly rank: 'high' | 'low';
   // rank (): 'high' | 'low' (this.instanceOf(High) ? 'high' : 'low')
 
+  static letter (role: string) {
+    if (role === 'Knigt') {
+      return 'N';
+    } else {
+      return role.charAt(0);
+    }
+  }
+
   square () { return this.container(Square) }
 
   // do i need this?
+  // loc (): SkirmaLocation {
   loc () {
+    // return {row, column};
+    // console.log(`Agent ${this} currently at `, this.square() , ` - is that bad?`);
     const {row, column} = this.square();
-    return {row, column};
+    console.log(`Figure ${this}.loc(): row, ${row}, column, ${column}`);
+    return ({row, column});
   }
 
   // STUB probably bogus; replace with player.influenced().includes || game.players.filter etc.
@@ -355,7 +432,14 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       },
     ).do(
       ({figures}) => {
-        figures.forEach(f => f.agentOf = player);
+        figures.forEach(f => {
+          f.agentOf = player;
+          console.log(`designating agent ${f} aka `, f, ` who lives at $ { f.loc() }`);
+          console.log(`blowing up in 3...2...1...`);
+          console.log(`blowing up $ {`, f.loc(),` }`);
+          board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
+          console.log("recorded");
+        });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
       ({figures}) => ({
@@ -383,7 +467,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         capture: (dest.has(Figure) ? `, capturing ${dest.first(Figure).role}.` : ``),
       })
     ).do(({figure, dest}) => {
-      if (dest.has(Figure)) {
+      const capture = dest.has(Figure);
+      if (capture) {
         const captured = dest.first(Figure);
 
         let vic: Player | undefined = undefined;
@@ -408,6 +493,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
           }
         }
       }
+
+      board.recordMove({player, capture, role: figure.role, from: figure.loc(), to: dest.loc(),});
 
       figure.putInto(dest);
       player.agents().forEach(f => delete f.agentOf);
@@ -473,19 +560,26 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         return opts;
       }
     ).do(({order}) => {
-      const [pa] = player.agents();
-      const dest = pa.square();
+      const lastMove = board.lastMove();
+      console.log('Last move: ', lastMove);
+      const baby = $.chessboard.first(Pawn, (f) => (f.square()?.row == lastMove.to.row && 
+                                                 f.square()?.column == lastMove.to.column));
+      console.log("so baby: ", baby);
+      const dest = baby.square();
+
+      let upgrade;
+
       if (order === 'skip') {
         return;
       } else if (order === 'General') {
-        $.box.first(General, {mine: true}).putInto(dest);
-        pa.putInto($.box);
+        upgrade = $.box.first(General, {mine: true});
       } else {
-        let upgrade = $.box.first(Figure, {role: order});
-        upgrade.putInto(dest);
-        pa.putInto($.box);
+        upgrade = $.box.first(Figure, {role: order});
         upgrade.agentOf = player;
       }
+      upgrade.putInto(dest);
+      baby.putInto($.box);
+      board.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
       ({order}) => ({ promotion: ((order === 'skip') ? `chose not to promote.` : `promoted the pawn to a ${ order }.`) }),
