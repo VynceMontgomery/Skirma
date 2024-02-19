@@ -48,13 +48,13 @@ interface SkirmaLocation {
 // STUB: really would prefer this took figures in role &promote, but ... 
 interface SkirmaMove {
   player: SkirmaPlayer;
-  role: string;
-  // figure: Figure;
+  // role: string;
+  figure: Figure;         // FIX causes ref error
   from: SkirmaLocation;
   to: SkirmaLocation;
   capture: boolean;
-  promote?: string;
-  // promote?: Figure;
+  // promote?: string;
+  promote?: Figure;       // FIX causes ref error
 }
 
 // not sure i need this
@@ -438,8 +438,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       ({figures}) => {
         figures.forEach(f => {
           f.agentOf = player;
-          // board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});
-          board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
+          board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});        // FIX causes ref error
+          // board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
         });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
@@ -495,8 +495,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         }
       }
 
-      board.recordMove({player, role: figure.role, from: figure.loc(), to: dest.loc(), capture, });
-      // board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });
+      // board.recordMove({player, role: figure.role, from: figure.loc(), to: dest.loc(), capture, });
+      board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });  // FIX causes ref error
 
 
       figure.putInto(dest);
@@ -580,8 +580,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       upgrade.putInto(dest);
       upgrade.agentOf = player;
       baby.putInto($.box);
-      // board.amendMove({promote: upgrade});
-      board.amendMove({promote: upgrade.role});
+      board.amendMove({promote: upgrade});          // FIX causes ref error
+      // board.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
       ({order}) => ({ promotion: ((order === 'skip') ? `chose not to promote.` : `promoted the pawn to a ${ order }.`) }),
