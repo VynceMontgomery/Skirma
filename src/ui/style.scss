@@ -68,7 +68,7 @@ proof of concept: yes, color-mix can take another color-mix.
   border-bottom: .2em solid var(--zone-bottom, none);
   border-left:   .2em solid var(--zone-left, none);
   border-right:  .2em solid var(--zone-right, none);
-  border-radius: .2em;
+/*  border-radius: .2em;*/
   height: 100%;
 }
 
@@ -76,15 +76,15 @@ proof of concept: yes, color-mix can take another color-mix.
   font-size: 1.5rem;
   text-align: center;
   vertical-align: middle;
-  color: var(--player-color, 
-          var(--agent-color, 
-            color-mix(in xyz, var(--zone-color, #333), #333)
-          )
-        );
   text-shadow:  /* 0.01em 0.01em 0.02em #eeed, */
                 -.01em -.01em 0.03em #ddde, 
                 0.01em 0.01em 0.04em #111e,
                 0.02em 0.02em 0.08em #333e;
+  color: var(--player-color,
+          var(--agent-color,
+            color-mix(in xyz, var(--zone-color, #333), #333)
+          ));
+
   background: radial-gradient(#eee5, #eee0);
 }
 
@@ -97,10 +97,10 @@ proof of concept: yes, color-mix can take another color-mix.
 }
 
 .info-hotspot {
-  border: .1em solid #ffee52;
-  box-shadow: 0.1em 0.1em .5em inset #ffee52,
-              -.1em -.1em .5em inset #ffee52,
-              0 0 1em #ffee52;
+  border: .1em solid #fef1f0;
+  box-shadow: 0.1em 0.1em .5em inset #fef1f0,
+              -.1em -.1em .5em inset #fef1f0,
+              0 0 1em #fef1f0;
 }
 
 .info-text h1 {

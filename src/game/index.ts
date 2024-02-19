@@ -46,13 +46,15 @@ interface SkirmaLocation {
 }
 
 // STUB: really would prefer this took figures in role &promote, but ... 
-interface SkimaMove {
+interface SkirmaMove {
   player: SkirmaPlayer;
   role: string;
+  // figure: Figure;
   from: SkirmaLocation;
   to: SkirmaLocation;
   capture: boolean;
   promote?: string;
+  // promote?: Figure;
 }
 
 // not sure i need this
@@ -157,12 +159,12 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
 
   recordMove (move:SkirmaMove) {
     this.moveLog.push(move);
-    console.log(`recorded move number ${this.moveLog.length}: ${Figure.letter(move.role)}` +
-       Square.toLocString(move.from) +
-       (move.capture ? 'x' : '-') +
-       Square.toLocString(move.to) +
-       (move.promote ? '=' + Figure.letter(move.promote) : '')
-       );
+    // console.log(`recorded move number ${this.moveLog.length}: ${Figure.letter(move.role)}` +
+    //    Square.toLocString(move.from) +
+    //    (move.capture ? 'x' : '-') +
+    //    Square.toLocString(move.to) +
+    //    (move.promote ? '=' + Figure.letter(move.promote) : '')
+    //    );
   }
 
   amendMove (diff:Partial<SkirmaMove>) {
@@ -170,12 +172,12 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
       const old = this.moveLog.pop();
       const move = {...old, ...diff}
       this.moveLog.push(move);
-      console.log(`amended move number ${this.moveLog.length}:  ${Figure.letter(move.role)}` +
-         Square.toLocString(move.from) +
-         (move.capture ? 'x' : '-') +
-         Square.toLocString(move.to) +
-       (move.promote ? '=' + Figure.letter(move.promote) : '')
-         );
+      // console.log(`amended move number ${this.moveLog.length}:  ${Figure.letter(move.role)}` +
+      //    Square.toLocString(move.from) +
+      //    (move.capture ? 'x' : '-') +
+      //    Square.toLocString(move.to) +
+      //    (move.promote ? '=' + Figure.letter(move.promote) : '')
+      //    );
     } else {
       this.recordMove(diff);
     }
@@ -243,7 +245,7 @@ export abstract class Figure extends Piece {
     // return {row, column};
     // console.log(`Agent ${this} currently at `, this.square() , ` - is that bad?`);
     const {row, column} = this.square();
-    console.log(`Figure ${this}.loc(): row, ${row}, column, ${column}`);
+    // console.log(`Figure ${this}.loc(): row, ${row}, column, ${column}`);
     return ({row, column});
   }
 
@@ -434,11 +436,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       ({figures}) => {
         figures.forEach(f => {
           f.agentOf = player;
-          console.log(`designating agent ${f} aka `, f, ` who lives at $ { f.loc() }`);
-          console.log(`blowing up in 3...2...1...`);
-          console.log(`blowing up $ {`, f.loc(),` }`);
+          // board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});
           board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
-          console.log("recorded");
         });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
@@ -494,7 +493,9 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         }
       }
 
-      board.recordMove({player, capture, role: figure.role, from: figure.loc(), to: dest.loc(),});
+      board.recordMove({player, role: figure.role, from: figure.loc(), to: dest.loc(), capture, });
+      // board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });
+
 
       figure.putInto(dest);
       player.agents().forEach(f => delete f.agentOf);
@@ -561,10 +562,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       }
     ).do(({order}) => {
       const lastMove = board.lastMove();
-      console.log('Last move: ', lastMove);
       const baby = $.chessboard.first(Pawn, (f) => (f.square()?.row == lastMove.to.row && 
                                                  f.square()?.column == lastMove.to.column));
-      console.log("so baby: ", baby);
       const dest = baby.square();
 
       let upgrade;
@@ -579,6 +578,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       }
       upgrade.putInto(dest);
       baby.putInto($.box);
+      // board.amendMove({promote: upgrade});
       board.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
