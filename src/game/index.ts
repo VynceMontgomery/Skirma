@@ -48,13 +48,13 @@ interface SkirmaLocation {
 // STUB: really would prefer this took figures in role &promote, but ... 
 interface SkirmaMove {
   player: SkirmaPlayer;
-  role: string;
-  // figure: Figure;
+  // role: string;           // is safe
+  figure: Figure;         // FIX causes ref error
   from: SkirmaLocation;
   to: SkirmaLocation;
   capture: boolean;
-  promote?: string;
-  // promote?: Figure;
+  // promote?: string;
+  promote?: Figure;       // presumably also causes ref error
 }
 
 // not sure i need this
@@ -80,7 +80,7 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   zoneMemo: {top: number, bottom: number, left: number, right: number} | undefined = undefined;
 
   zone (force: boolean = false) {
-    if (!force && this.zoneMemo) return this.zoneMemo;
+    if (force && !force && this.zoneMemo) return this.zoneMemo;
 
     const zoneGuess = {
       top:    (Math.min(...this.highs().map((f) => f.square()?.row))),
@@ -146,6 +146,12 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
     const rabble = this.zoneLows().filter(f => (!f.agentOf || f.agentOf === this));
     return this.highs().concat(this.agents()).concat(rabble).filter((v, i, a) => i === a.indexOf(v));
   }
+
+  moveFigureFigureOptions() : Figure[] {
+    this.board.playerActionName = 'moveFigure';
+    this.board.actionName = 'figure';
+    return this.influenced();
+  }
 }
 
 class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
@@ -153,12 +159,15 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
    * Any overall properties of your game go here
    */
   phase: number = 0;
+  playerActionName?: string = '';
+  actionName?: string = '';
+
 
   readonly moveLog: [] = [];
-  // readonly moveLog: SkirmaMove[] = [];
+  // readonly moveLog: SkirmaMove[] = [];       // some day, maybe
 
   recordMove (move:SkirmaMove) {
-    this.moveLog.push(move);
+    this.moveLog.push(move);                    // FIX comments below may be useful for tracking ref error
     // console.log(`recorded move number ${this.moveLog.length}: ${Figure.letter(move.role)}` +
     //    Square.toLocString(move.from) +
     //    (move.capture ? 'x' : '-') +
@@ -171,7 +180,7 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
     if (this.moveLog.length) {
       const old = this.moveLog.pop();
       const move = {...old, ...diff}
-      this.moveLog.push(move);
+      this.moveLog.push(move);                  // FIX comments below may be useful for tracking ref error
       // console.log(`amended move number ${this.moveLog.length}:  ${Figure.letter(move.role)}` +
       //    Square.toLocString(move.from) +
       //    (move.capture ? 'x' : '-') +
@@ -299,6 +308,12 @@ export abstract class Figure extends Piece {
 
   validMoves (): Square[]
 
+  moveFigureDestOptions() : Square[] {
+    this.board.playerActionName = 'moveFigure';
+    this.board.actionName = 'dest';
+    return this.validMoves();
+  }
+
 }
 
 export abstract class High extends Figure {
@@ -381,7 +396,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
   });
 
   board.create(Space, 'box');
-  $.box.onEnter(Low, f => delete f.agentOf);
+  $.box.onEnter(Figure, f => delete f.agentOf);
 
   for (const player of game.players) {
     $.box.createMany(3, General, 'G', {player});
@@ -438,8 +453,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       ({figures}) => {
         figures.forEach(f => {
           f.agentOf = player;
-          // board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});
-          board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
+          board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});        // FIX causes ref error
+          // board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});  // presumably safe
         });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
@@ -453,14 +468,16 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       prompt: 'Your Move',
     }).chooseOnBoard(
       'figure',
-      () => player.influenced(),
+      // () => player.influenced(),
+      () => player.moveFigureFigureOptions(),
       { skipIf: 'never'},
     ).chooseOnBoard(
       'dest',
-      ({figure}) => figure.validMoves(),
+      // ({figure}) => figure.validMoves(),
+      ({figure}) => figure.moveFigureDestOptions(),
       { skipIf: 'never'},
     ).message(
-      `{{ player }} moves {{ role }} {{start}} to {{end}}{{ capture }}.`, 
+      `{{ player }} moves {{ role }} {{start}} to {{end}}{{ capture }}.`,
       ({figure, dest}) => ({
         role: figure.role,
         start: figure.square().locString(),
@@ -495,9 +512,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         }
       }
 
-      board.recordMove({player, role: figure.role, from: figure.loc(), to: dest.loc(), capture, });
-      // board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });
-
+      board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });  // FIX causes ref error
+      // board.recordMove({player, role: figure.role, from: figure.loc(), to: dest.loc(), capture, });
 
       figure.putInto(dest);
       player.agents().forEach(f => delete f.agentOf);
@@ -507,6 +523,9 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       if (figure.role === 'Pawn' && dest.isEdge() && !player.hasInZone(dest)) {
         game.followUp({name: 'promote'});
       }
+
+      board.playerActionName = '';
+      board.actionName = '';
 
       if (! $.chessboard.all(Low).some((f) => !player.influenced().includes(f))) {
         game.finish(player);
@@ -580,8 +599,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       upgrade.putInto(dest);
       upgrade.agentOf = player;
       baby.putInto($.box);
-      // board.amendMove({promote: upgrade});
-      board.amendMove({promote: upgrade.role});
+      board.amendMove({promote: upgrade});          // FIX causes ref error
+      // board.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
       ({order}) => ({ promotion: ((order === 'skip') ? `chose not to promote.` : `promoted the pawn to a ${ order }.`) }),
