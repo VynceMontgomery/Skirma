@@ -92,6 +92,7 @@ proof of concept: yes, color-mix can take another color-mix.
   font-weight: 1000;
 }
 
+[data-phase="0"] .selectable,
 .selected {
   box-shadow: 0em 0em 1em inset var(--player-color, #fff);
 }

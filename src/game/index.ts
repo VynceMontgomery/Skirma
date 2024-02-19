@@ -74,7 +74,7 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   }
 
   agents () {
-    return this.board.first(Space, 'chessboard').all(Low, {agentOf: this});
+    return this.board.first(Space, 'chessboard').all(Figure, {agentOf: this});
   }  
 
   zoneMemo: {top: number, bottom: number, left: number, right: number} | undefined = undefined;
@@ -144,7 +144,7 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
 
   influenced () : Figure[] {
     const rabble = this.zoneLows().filter(f => (!f.agentOf || f.agentOf === this));
-    return this.highs().concat(this.agents()).concat(rabble);
+    return this.highs().concat(this.agents()).concat(rabble).filter((v, i, a) => i === a.indexOf(v));
   }
 }
 
@@ -229,6 +229,8 @@ export abstract class Figure extends Piece {
   readonly rank: 'high' | 'low';
   // rank (): 'high' | 'low' (this.instanceOf(High) ? 'high' : 'low')
 
+  agentOf?: Player;
+
   static letter (role: string) {
     if (role === 'Knigt') {
       return 'N';
@@ -306,7 +308,7 @@ export abstract class High extends Figure {
 
 export abstract class Low extends Figure {
   rank: 'low' = 'low';
-  agentOf: Player | undefined;
+  // agentOf: Player | undefined;
 }
 
 export class Queen extends High {
@@ -499,7 +501,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
 
       figure.putInto(dest);
       player.agents().forEach(f => delete f.agentOf);
-      if (figure.rank === 'low') figure.agentOf = player;
+      figure.agentOf = player;
       // player.agent = (figure.rank === 'low' ? figure : undefined);
 
       if (figure.role === 'Pawn' && dest.isEdge() && !player.hasInZone(dest)) {
@@ -574,9 +576,9 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         upgrade = $.box.first(General, {mine: true});
       } else {
         upgrade = $.box.first(Figure, {role: order});
-        upgrade.agentOf = player;
       }
       upgrade.putInto(dest);
+      upgrade.agentOf = player;
       baby.putInto($.box);
       // board.amendMove({promote: upgrade});
       board.amendMove({promote: upgrade.role});

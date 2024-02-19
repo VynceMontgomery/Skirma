@@ -18,21 +18,23 @@ render(setup, {
     board.layout('chessboard', {
       aspectRatio: 1,
       area: {
-        top: 20,
-        left: 10,
-        width: 80,
-        height: 80,
+        top: 18,
+        left: 14,
+        width: 72,
+        height: 72,
       },
+      showBoundingBox: true,
     });
 
     board.layout('box', {
       // aspectRatio: 5,
       area: {
-        top: 0,
-        left: 28,
-        width: 44,
-        height: 11,
+        top: 5,
+        left: 30,
+        width: 40,
+        height: 10,
       },
+      showBoundingBox: true,
     });
 
     board.all(Space, 'box').appearance({
@@ -57,7 +59,7 @@ render(setup, {
       </div><div>
       Most pieces move like in Chess, with a few small exceptions. Pawns aren't stuck to one side of
       the conflict, so they also aren't stuck facing one direction. They promote if they are moved 
-      to the edge of the board outside your zone. They cannot become Queens - you only get the two you 
+      to <em>any</em> edge of the board, outside your zone. They cannot become Queens - you only get the two you
       start with, so use them wisely. They can promote to "General" - a high piece that moves like 
       either a knight or a king.
       </div><div>
@@ -112,6 +114,8 @@ render(setup, {
         s.zoneLeft   = zoneLeft.length   ?   zoneLeft.reduce(cmrf, "#8888") : undefined;
         const zoneRight  = s.inZones().filter(p => s.column === p.zone().right);
         s.zoneRight  = zoneRight.length  ?  zoneRight.reduce(cmrf, "#8888") : undefined;
+      } else {
+        delete s.zonecolor;
       }
 
     });
@@ -122,7 +126,10 @@ render(setup, {
 
       if (f.agentOf) {
         f.agentColor = f.agentOf.color;
-        codePoint += 6;
+        if (f.rank === 'low') codePoint += 6;
+      } else {
+        delete f.agentColor;
+        codePoint = cpm[f.name];
       }
 
       f.icon = String.fromCodePoint(codePoint);
@@ -145,6 +152,9 @@ render(setup, {
             }}>
             </div>
           );
+        } else {
+          return (' ');
+          // return (<div>{ sq.locString() }</div>);
         }
       }
     });
