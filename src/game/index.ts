@@ -48,13 +48,13 @@ interface SkirmaLocation {
 // STUB: really would prefer this took figures in role &promote, but ... 
 interface SkirmaMove {
   player: SkirmaPlayer;
-  role: string;           // is safe
-  // figure: Figure;         // FIX causes ref error
+  // role: string;           // is safe
+  figure: Figure;         // FIX causes ref error
   from: SkirmaLocation;
   to: SkirmaLocation;
   capture: boolean;
-  promote?: string;
-  // promote?: Figure;       // presumably also causes ref error
+  // promote?: string;
+  promote?: Figure;       // presumably also causes ref error
 }
 
 // not sure i need this
@@ -332,8 +332,8 @@ export abstract class Figure extends Piece {
   moveTo ({player, dest}): void {
     const capture = dest.first(Figure)?.captured();
 
-    // board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });  // FIX causes ref error
-    this.board.recordMove({player, role: this.role, from: this.loc(), to: dest.loc(), capture, });
+    this.board.recordMove({player, figure: this, from: this.loc(), to: dest.loc(), capture, });  // FIX causes ref error
+    // this.board.recordMove({player, role: this.role, from: this.loc(), to: dest.loc(), capture, });
 
     // do this in dislay logic, not here
     // this.square().setTrace({player, figure: this});
@@ -504,8 +504,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       ({figures}) => {
         figures.forEach(f => {
           f.agentOf = player;
-          // board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});        // FIX causes ref error
-          board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});  // presumably safe
+          board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});        // FIX causes ref error
+          // board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});  // presumably safe
         });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
@@ -621,8 +621,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       upgrade.putInto(dest);
       upgrade.agentOf = player;
       baby.putInto($.box);
-      // board.amendMove({promote: upgrade});          // FIX causes ref error
-      board.amendMove({promote: upgrade.role});
+      board.amendMove({promote: upgrade});          // FIX causes ref error
+      // board.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
       ({order}) => ({ promotion: ((order === 'skip') ? `chose not to promote.` : `promoted the pawn to a ${ order }.`) }),

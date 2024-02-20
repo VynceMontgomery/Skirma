@@ -15,17 +15,6 @@ render(setup, {
       </style>
     });
 
-    board.layout('chessboard', {
-      aspectRatio: 1,
-      area: {
-        top: 18,
-        left: 14,
-        width: 72,
-        height: 72,
-      },
-      showBoundingBox: true,
-    });
-
     board.layout('box', {
       // aspectRatio: 5,
       area: {
@@ -33,6 +22,17 @@ render(setup, {
         left: 30,
         width: 40,
         height: 10,
+      },
+      showBoundingBox: true,
+    });
+
+    board.layout('chessboard', {
+      aspectRatio: 1,
+      area: {
+        top: 18,
+        left: 14,
+        width: 72,
+        height: 72,
       },
       showBoundingBox: true,
     });
@@ -102,7 +102,7 @@ render(setup, {
       s.gridparity = ['even', 'odd'].at((s.row + s.column)%2);
 
       if (s.inZones().length) { 
-        const cmrf = (s, p, i) => `color-mix(in xyz, ${p.color} ${100*(1/(i+1))}%, ${s} ${100*((i)/(i+1))}%)`;
+        const cmrf = (s, p, i) => `color-mix(in oklch shorter hue, ${p.color} ${100*(1/(i+1))}%, ${s} ${100*((i)/(i+1))}%)`;
 
         const zoneColor = s.inZones().reduce(cmrf, "#8888");
         s.zoneColor = zoneColor;
