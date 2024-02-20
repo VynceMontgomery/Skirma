@@ -72,8 +72,24 @@ proof of concept: yes, color-mix can take another color-mix.
   height: 100%;
 }
 
+.Square[data-attention] .Piece .ColorMule {
+  box-shadow: 0.1rem 0.1rem 0.1rem inset color-mix(in xyz, var(--attn-color, #ccc) 50%, #ccc 50%), 
+              -.1rem -.1rem 0.1rem inset color-mix(in xyz, var(--attn-color, #333) 50%, #333 50%);
+}
+
+.Square[data-tracecolor] > .ColorMule {
+  box-shadow: -.1rem -.1rem 0.2rem inset color-mix(in xyz, var(--trace-color, #ccc) 50%, #ccc 50%), 
+              0.1rem 0.1rem 0.2rem inset color-mix(in xyz, var(--trace-color, #333) 50%, #333 50%);
+}
+
+.Square[data-alarm="true"] > .ColorMule {
+  background: linear-gradient(to bottom right, transparent 35%, color-mix(in xyz, var(--player-color, #333), transparent 60%) 45% 55%, transparent 65%),
+              linear-gradient(to bottom left,  transparent 35%, color-mix(in xyz, var(--player-color, #333), transparent 60%) 45% 55%, transparent 65%);
+}
+
+
 .Piece .ColorMule {
-  font-size: 1.5rem;
+  font-size: 1.33rem;
   text-align: center;
   vertical-align: middle;
   text-shadow:  /* 0.01em 0.01em 0.02em #eeed, */
@@ -98,8 +114,8 @@ proof of concept: yes, color-mix can take another color-mix.
 }
 
 [data-playeractionname=moveFigure][data-actionname='dest'] .selectable .Piece:hover {
-  background: linear-gradient(to bottom right, transparent 42%, var(--player-color, #333) 48% 52%, transparent 58%),
-              linear-gradient(to bottom left,  transparent 42%, var(--player-color, #333) 48% 52%, transparent 58%);
+  background: linear-gradient(to bottom right, transparent 40%, color-mix(in xyz, var(--player-color, #888), #fff 60%) 47% 53%, transparent 60%),
+              linear-gradient(to bottom left,  transparent 40%, color-mix(in xyz, var(--player-color, #888), #fff 60%) 47% 53%, transparent 60%);
 }
 
 [data-playeractionname=moveFigure][data-actionname='dest'] .selectable:hover {

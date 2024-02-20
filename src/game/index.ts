@@ -48,13 +48,13 @@ interface SkirmaLocation {
 // STUB: really would prefer this took figures in role &promote, but ... 
 interface SkirmaMove {
   player: SkirmaPlayer;
-  // role: string;           // is safe
-  figure: Figure;         // FIX causes ref error
+  role: string;           // is safe
+  // figure: Figure;         // FIX causes ref error
   from: SkirmaLocation;
   to: SkirmaLocation;
   capture: boolean;
-  // promote?: string;
-  promote?: Figure;       // presumably also causes ref error
+  promote?: string;
+  // promote?: Figure;       // presumably also causes ref error
 }
 
 // not sure i need this
@@ -80,7 +80,7 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   zoneMemo: {top: number, bottom: number, left: number, right: number} | undefined = undefined;
 
   zone (force: boolean = false) {
-    if (force && !force && this.zoneMemo) return this.zoneMemo;
+    if (!force && this.zoneMemo) return this.zoneMemo;
 
     const zoneGuess = {
       top:    (Math.min(...this.highs().map((f) => f.square()?.row))),
@@ -151,6 +151,21 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
     this.board.playerActionName = 'moveFigure';
     this.board.actionName = 'figure';
     return this.influenced();
+  }
+
+  checkElimination () : boolean {
+    if (this.eliminated) return this.eliminated;
+
+    if (!this.highs().length && !this.agents().length) {
+      this.game.message(`{{ player }} has been eliminated.`, {player: this});
+      this.eliminated = true;
+    }
+
+    const remaining = this.game.players.filter((p) => !p.eliminated);
+
+    if (remaining.length === 1) {
+      this.game.finish(remaining[0]);
+    }
   }
 }
 
@@ -314,6 +329,42 @@ export abstract class Figure extends Piece {
     return this.validMoves();
   }
 
+  moveTo ({player, dest}): void {
+    const capture = dest.first(Figure)?.captured();
+
+    // board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });  // FIX causes ref error
+    this.board.recordMove({player, role: this.role, from: this.loc(), to: dest.loc(), capture, });
+
+    // do this in dislay logic, not here
+    // this.square().setTrace({player, figure: this});
+    // dest.setAttention(player);
+
+    this.putInto(dest);
+
+    player.agents().forEach(f => delete f.agentOf);
+    this.agentOf = player;
+  }
+
+
+  captured (): boolean {
+    if (!(this.loc()?.row && this.loc()?.column)) return false;
+
+    let vic: Player | undefined = undefined;
+
+    if (this.player) {
+      vic = this.player;
+    } else {
+      vic = this.agentOf;
+    }
+
+    this.putInto(this.board.first('box'));
+
+    if (vic) {
+      vic.checkElimination();
+    }
+
+    return true;
+  }
 }
 
 export abstract class High extends Figure {
@@ -453,8 +504,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       ({figures}) => {
         figures.forEach(f => {
           f.agentOf = player;
-          board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});        // FIX causes ref error
-          // board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});  // presumably safe
+          // board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});        // FIX causes ref error
+          board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});  // presumably safe
         });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
@@ -485,51 +536,22 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         capture: (dest.has(Figure) ? `, capturing ${dest.first(Figure).role}.` : ``),
       })
     ).do(({figure, dest}) => {
-      const capture = dest.has(Figure);
-      if (capture) {
-        const captured = dest.first(Figure);
 
-        let vic: Player | undefined = undefined;
-        if (captured.player) {
-          vic = captured.player;
-        } else {
-          vic = captured.agentOf;
-        }
-
-        captured.putInto($.box);
-
-        if (vic) {
-          const highCount = vic.highs().length;
-          if (highCount === 0 && !vic.agents().length) {
-            vic.game.message(`${ vic } has been eliminated.`);
-            vic.eliminated = true;
-            const remaining = game.players.filter((p) => !p.eliminated);
-
-            if (remaining.length === 1) {
-              game.finish(remaining[0]);
-            }
-          }
-        }
-      }
-
-      board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });  // FIX causes ref error
-      // board.recordMove({player, role: figure.role, from: figure.loc(), to: dest.loc(), capture, });
-
-      figure.putInto(dest);
-      player.agents().forEach(f => delete f.agentOf);
-      figure.agentOf = player;
-      // player.agent = (figure.rank === 'low' ? figure : undefined);
+      figure.moveTo({player, dest});
 
       if (figure.role === 'Pawn' && dest.isEdge() && !player.hasInZone(dest)) {
         game.followUp({name: 'promote'});
       }
 
+      // cleanup action context variables
       board.playerActionName = '';
       board.actionName = '';
 
+      // STUB figure.influence?
       if (! $.chessboard.all(Low).some((f) => !player.influenced().includes(f))) {
         game.finish(player);
       }
+
     }),
 
     resign: player => action({
@@ -599,8 +621,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       upgrade.putInto(dest);
       upgrade.agentOf = player;
       baby.putInto($.box);
-      board.amendMove({promote: upgrade});          // FIX causes ref error
-      // board.amendMove({promote: upgrade.role});
+      // board.amendMove({promote: upgrade});          // FIX causes ref error
+      board.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
       ({order}) => ({ promotion: ((order === 'skip') ? `chose not to promote.` : `promoted the pawn to a ${ order }.`) }),
