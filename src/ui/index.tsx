@@ -15,17 +15,6 @@ render(setup, {
       </style>
     });
 
-    board.layout('chessboard', {
-      aspectRatio: 1,
-      area: {
-        top: 18,
-        left: 14,
-        width: 72,
-        height: 72,
-      },
-      showBoundingBox: true,
-    });
-
     board.layout('box', {
       // aspectRatio: 5,
       area: {
@@ -33,6 +22,17 @@ render(setup, {
         left: 30,
         width: 40,
         height: 10,
+      },
+      showBoundingBox: true,
+    });
+
+    board.layout('chessboard', {
+      aspectRatio: 1,
+      area: {
+        top: 18,
+        left: 14,
+        width: 72,
+        height: 72,
       },
       showBoundingBox: true,
     });
@@ -97,11 +97,12 @@ render(setup, {
       margin: .25,
     });
 
+    // square display logic
     board.all(Square).forEach(s => {
       s.gridparity = ['even', 'odd'].at((s.row + s.column)%2);
 
       if (s.inZones().length) { 
-        const cmrf = (s, p, i) => `color-mix(in xyz, ${p.color} ${100*(1/(i+1))}%, ${s} ${100*((i)/(i+1))}%)`;
+        const cmrf = (s, p, i) => `color-mix(in oklch shorter hue, ${p.color} ${100*(1/(i+1))}%, ${s} ${100*((i)/(i+1))}%)`;
 
         const zoneColor = s.inZones().reduce(cmrf, "#8888");
         s.zoneColor = zoneColor;
@@ -115,11 +116,27 @@ render(setup, {
         const zoneRight  = s.inZones().filter(p => s.column === p.zone().right);
         s.zoneRight  = zoneRight.length  ?  zoneRight.reduce(cmrf, "#8888") : undefined;
       } else {
-        delete s.zonecolor;
+        delete s.zoneColor;
+      }
+
+      let move = board.lastMove();
+      if (move && s.row === move.from.row && s.column === move.from.column) {
+        board.all(Square, {traceColor: move.player.color}).forEach(sq => 
+          {delete sq.traceColor; delete sq.traceFigure});
+
+        s.traceColor = move.player.color;
+        s.traceFigure = move.figure;        // does nothing until moveLog has that
+      } else if (move && s.row === move.to.row && s.column === move.to.column) {
+        board.all(Square, {attention: move.player.color}).forEach(sq => 
+          {delete sq.attention; delete sq.alarm});
+
+        s.attention = move.player.color;
+        s.alarm = (move.capture || 'banana');
       }
 
     });
 
+    // figure display logic
     board.all(Figure).forEach(f => {
       const cpm = {'Q': 9819, 'R': 9814, 'B': 9815, 'N': 9816, 'P': 9817, 'G': 9733};
       let codePoint = cpm[f.name];
@@ -149,11 +166,21 @@ render(setup, {
               '--zone-bottom' : sq.zoneBottom,
               '--zone-left'   : sq.zoneLeft,
               '--zone-right'  : sq.zoneRight,
+              '--trace-color' : sq.traceColor,
+              '--attn-color'  : sq.attention,
+              '--alarm'       : sq.alarm,
             }}>
             </div>
           );
         } else {
-          return (' ');
+          return (
+            <div className="ColorMule" style={{
+              '--trace-color' : sq.traceColor,
+              '--attn-color'  : sq.attention,
+              '--alarm'       : sq.alarm,
+            }}>
+            </div>
+          );
           // return (<div>{ sq.locString() }</div>);
         }
       }

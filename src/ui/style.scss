@@ -2,7 +2,6 @@
   visibility: hidden;
 }*/
 
-
 #box > div {
   font-size: 1.8rem;
   text-align: center;
@@ -10,6 +9,7 @@
   border: solid 0.1em #777;
   background: 
     linear-gradient(to left, var(--player0-color), #8888 20%, #8888 80%, var(--player1-color));
+
 /*  width: 270px;
   height: 120px;
   padding-top: 25px;
@@ -19,7 +19,6 @@
       #79838997 0.5turn 0.75turn,
       #c3c1a799 0.75turn
     ) top left / 20% 50% repeat,*/
-/*    linear-gradient(to left, var(--player0-color), #8888 20%, #8888 80%, var(--player1-color)),*/
     ;
 
 }
@@ -38,16 +37,10 @@
 }
 
 .Piece.agent .bz-default {
-  font-weight: 900;
+  font-weight: 888;
   color: var(--agent-color);
 }
 
-/*
-proof of concept: yes, color-mix can take another color-mix.
-#box .Piece.Knight .bz-default {
-  border: 1em solid color-mix(in srgb, #00c6 25%, color-mix(in srgb, #c006, #0c06) 50%);
-}
-*/
 [data-name=square] > .bz-default {
   visibility: hidden;
 }
@@ -72,29 +65,70 @@ proof of concept: yes, color-mix can take another color-mix.
   height: 100%;
 }
 
+.Square[data-attention] .Piece .ColorMule {
+  box-shadow: 0.05rem 0.05rem 0.05rem inset color-mix(in xyz, var(--attn-color, #ccc) 50%, #ccc 50%), 
+              -.05rem -.05rem 0.05rem inset color-mix(in xyz, var(--attn-color, #333) 50%, #333 50%);
+}
+
+.Square[data-tracecolor] > .ColorMule {
+  box-shadow: -.075rem -.075rem 0.1rem inset color-mix(in xyz, var(--trace-color, #ccc) 50%, #ccc 50%), 
+              0.075rem 0.075rem 0.1rem inset color-mix(in xyz, var(--trace-color, #333) 50%, #333 50%);
+}
+
+.Square[data-alarm="true"] > .ColorMule {
+  background: linear-gradient(to bottom right,
+                  transparent 45%,
+                  color-mix(in xyz, var(--player-color, #555), transparent 60%) 47% 53%,
+                  transparent 55%),
+              linear-gradient(to bottom left,
+                  transparent 45%,
+                  color-mix(in xyz, var(--player-color, #555), transparent 60%) 47% 53%,
+                  transparent 55%);
+}
+
+
 .Piece .ColorMule {
-  font-size: 1.5rem;
+  font-size: 1.33rem;
   text-align: center;
   vertical-align: middle;
   text-shadow:  /* 0.01em 0.01em 0.02em #eeed, */
-                -.01em -.01em 0.03em #ddde, 
-                0.01em 0.01em 0.04em #111e,
-                0.02em 0.02em 0.08em #333e;
+                -.03rem -.03rem 0.08rem #ddde, 
+                0.03rem 0.03rem 0.03rem #111e,
+                0.05rem 0.05rem 0.11rem #333e;
   color: var(--player-color,
           var(--agent-color,
-            color-mix(in xyz, var(--zone-color, #333), #333)
+            color-mix(in xyz, var(--zone-color, #888), #333)
           ));
 
   background: radial-gradient(#eee5, #eee0);
 }
 
 .Piece[data-rank=low] .ColorMule {
-  font-weight: 1000;
+  font-weight: 888;
 }
 
 [data-phase="0"] .selectable,
 .selected {
-  box-shadow: 0em 0em 1em inset var(--player-color, #fff);
+  box-shadow: 0em 0em 1em inset var(--my-player-color, #fff);
+}
+
+[data-playeractionname=moveFigure][data-actionname='dest'] .selectable .Piece:hover {
+  background: linear-gradient(to bottom right,
+                  transparent 44%,
+                  var(--my-player-color, #888) 48% 48%,
+                  color-mix(in xyz, var(--my-player-color, #888), #fff 60%) 48% 52%,
+                  var(--my-player-color, #888) 52% 52%,
+                  transparent 56%),
+              linear-gradient(to bottom left,
+                  transparent 44%,
+                  var(--my-player-color, #888) 48% 48%,
+                  color-mix(in xyz, var(--my-player-color, #888), #fff 60%) 48% 52%,
+                  var(--my-player-color, #888) 52% 52%,
+                  transparent 56%);
+}
+
+[data-playeractionname=moveFigure][data-actionname='dest'] .selectable:hover {
+  box-shadow: 0em 0em 2em inset var(--my-player-color, #eee);
 }
 
 .info-hotspot {

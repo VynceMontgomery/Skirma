@@ -48,13 +48,11 @@ interface SkirmaLocation {
 // STUB: really would prefer this took figures in role &promote, but ... 
 interface SkirmaMove {
   player: SkirmaPlayer;
-  // role: string;
-  figure: Figure;         // FIX causes ref error
+  figure: Figure;
   from: SkirmaLocation;
   to: SkirmaLocation;
   capture: boolean;
-  // promote?: string;
-  promote?: Figure;       // FIX causes ref error
+  promote?: Figure;
 }
 
 // not sure i need this
@@ -146,6 +144,27 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
     const rabble = this.zoneLows().filter(f => (!f.agentOf || f.agentOf === this));
     return this.highs().concat(this.agents()).concat(rabble).filter((v, i, a) => i === a.indexOf(v));
   }
+
+  moveFigureFigureOptions() : Figure[] {
+    this.board.playerActionName = 'moveFigure';
+    this.board.actionName = 'figure';
+    return this.influenced();
+  }
+
+  checkElimination () : boolean {
+    if (this.eliminated) return this.eliminated;
+
+    if (!this.highs().length && !this.agents().length) {
+      this.game.message(`{{ player }} has been eliminated.`, {player: this});
+      this.eliminated = true;
+    }
+
+    const remaining = this.game.players.filter((p) => !p.eliminated);
+
+    if (remaining.length === 1) {
+      this.game.finish(remaining[0]);
+    }
+  }
 }
 
 class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
@@ -153,12 +172,15 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
    * Any overall properties of your game go here
    */
   phase: number = 0;
+  playerActionName?: string = '';
+  actionName?: string = '';
+
 
   readonly moveLog: [] = [];
-  // readonly moveLog: SkirmaMove[] = [];
+  // readonly moveLog: SkirmaMove[] = [];       // some day, maybe
 
   recordMove (move:SkirmaMove) {
-    this.moveLog.push(move);
+    this.moveLog.push(move);                    // FIX comments below may be useful for tracking ref error
     // console.log(`recorded move number ${this.moveLog.length}: ${Figure.letter(move.role)}` +
     //    Square.toLocString(move.from) +
     //    (move.capture ? 'x' : '-') +
@@ -171,7 +193,7 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
     if (this.moveLog.length) {
       const old = this.moveLog.pop();
       const move = {...old, ...diff}
-      this.moveLog.push(move);
+      this.moveLog.push(move);                  // FIX comments below may be useful for tracking ref error
       // console.log(`amended move number ${this.moveLog.length}:  ${Figure.letter(move.role)}` +
       //    Square.toLocString(move.from) +
       //    (move.capture ? 'x' : '-') +
@@ -299,6 +321,44 @@ export abstract class Figure extends Piece {
 
   validMoves (): Square[]
 
+  moveFigureDestOptions() : Square[] {
+    this.board.playerActionName = 'moveFigure';
+    this.board.actionName = 'dest';
+    return this.validMoves();
+  }
+
+  moveTo ({player, dest}): void {
+    const capture = dest.first(Figure)?.captured();
+
+    this.board.recordMove({player, figure: this, from: this.loc(), to: dest.loc(), capture, });
+    // this.board.recordMove({player, role: this.role, from: this.loc(), to: dest.loc(), capture, });
+
+    this.putInto(dest);
+
+    player.agents().forEach(f => delete f.agentOf);
+    this.agentOf = player;
+  }
+
+
+  captured (): boolean {
+    if (!(this.loc()?.row && this.loc()?.column)) return false;
+
+    let vic: Player | undefined = undefined;
+
+    if (this.player) {
+      vic = this.player;
+    } else {
+      vic = this.agentOf;
+    }
+
+    this.putInto(this.board.first('box'));
+
+    if (vic) {
+      vic.checkElimination();
+    }
+
+    return true;
+  }
 }
 
 export abstract class High extends Figure {
@@ -381,7 +441,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
   });
 
   board.create(Space, 'box');
-  $.box.onEnter(Low, f => delete f.agentOf);
+  $.box.onEnter(Figure, f => delete f.agentOf);
 
   for (const player of game.players) {
     $.box.createMany(3, General, 'G', {player});
@@ -438,7 +498,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       ({figures}) => {
         figures.forEach(f => {
           f.agentOf = player;
-          board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});        // FIX causes ref error
+          board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});
           // board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
         });
     }).message(
@@ -453,14 +513,16 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       prompt: 'Your Move',
     }).chooseOnBoard(
       'figure',
-      () => player.influenced(),
+      // () => player.influenced(),
+      () => player.moveFigureFigureOptions(),
       { skipIf: 'never'},
     ).chooseOnBoard(
       'dest',
-      ({figure}) => figure.validMoves(),
+      // ({figure}) => figure.validMoves(),
+      ({figure}) => figure.moveFigureDestOptions(),
       { skipIf: 'never'},
     ).message(
-      `{{ player }} moves {{ role }} {{start}} to {{end}}{{ capture }}.`, 
+      `{{ player }} moves {{ role }} {{start}} to {{end}}{{ capture }}.`,
       ({figure, dest}) => ({
         role: figure.role,
         start: figure.square().locString(),
@@ -468,49 +530,21 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         capture: (dest.has(Figure) ? `, capturing ${dest.first(Figure).role}.` : ``),
       })
     ).do(({figure, dest}) => {
-      const capture = dest.has(Figure);
-      if (capture) {
-        const captured = dest.first(Figure);
-
-        let vic: Player | undefined = undefined;
-        if (captured.player) {
-          vic = captured.player;
-        } else {
-          vic = captured.agentOf;
-        }
-
-        captured.putInto($.box);
-
-        if (vic) {
-          const highCount = vic.highs().length;
-          if (highCount === 0 && !vic.agents().length) {
-            vic.game.message(`${ vic } has been eliminated.`);
-            vic.eliminated = true;
-            const remaining = game.players.filter((p) => !p.eliminated);
-
-            if (remaining.length === 1) {
-              game.finish(remaining[0]);
-            }
-          }
-        }
-      }
-
-      // board.recordMove({player, role: figure.role, from: figure.loc(), to: dest.loc(), capture, });
-      board.recordMove({player, figure, from: figure.loc(), to: dest.loc(), capture, });  // FIX causes ref error
-
-
-      figure.putInto(dest);
-      player.agents().forEach(f => delete f.agentOf);
-      figure.agentOf = player;
-      // player.agent = (figure.rank === 'low' ? figure : undefined);
+      figure.moveTo({player, dest});
 
       if (figure.role === 'Pawn' && dest.isEdge() && !player.hasInZone(dest)) {
         game.followUp({name: 'promote'});
       }
 
+      // cleanup action context variables
+      board.playerActionName = '';
+      board.actionName = '';
+
+      // STUB figure.influence?
       if (! $.chessboard.all(Low).some((f) => !player.influenced().includes(f))) {
         game.finish(player);
       }
+
     }),
 
     resign: player => action({
