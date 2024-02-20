@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, numberSetting } from '@boardzilla/core';
-import { default as setup, Space, Figure, Square } from '../game/index.js';
+import { default as setup, SkirmaPlayer, Space, Figure, Square } from '../game/index.js';
 
 import './style.scss';
 import '@boardzilla/core/index.css';
@@ -23,7 +23,6 @@ render(setup, {
         width: 40,
         height: 10,
       },
-      showBoundingBox: true,
     });
 
     board.layout('chessboard', {
@@ -34,7 +33,6 @@ render(setup, {
         width: 72,
         height: 72,
       },
-      showBoundingBox: true,
     });
 
     board.all(Space, 'box').appearance({
@@ -42,7 +40,7 @@ render(setup, {
       <div style={{
         '--player0-color': board.game.players[0].color,
         '--player1-color': board.game.players[1].color,
-      }}>Skirma</div>
+      } as React.CSSProperties }>Skirma</div>
       ,
 
       info: () => 
@@ -75,7 +73,7 @@ render(setup, {
       render: () => null
     })
 
-    board.all(Space, 'box').layout(Piece, {
+    board.all(Space, 'box').layout(Figure, {
       aspectRatio: 1,
     })
 
@@ -99,102 +97,126 @@ render(setup, {
 
     // square display logic
     board.all(Square).forEach(s => {
-      s.gridparity = ['even', 'odd'].at((s.row + s.column)%2);
+      s.gridparity = s.gridparity || ['even', 'odd'].at(((s.row!) + (s.column!))%2)!;
 
-      if (s.inZones().length) { 
-        const cmrf = (s, p, i) => `color-mix(in oklch shorter hue, ${p.color} ${100*(1/(i+1))}%, ${s} ${100*((i)/(i+1))}%)`;
+      const zones = s.inZones();
+      let zoneColor: string = '';
+      let zoneTop: string = '';
+      let zoneBottom: string = '';
+      let zoneLeft: string = '';
+      let zoneRight: string = '';
 
-        const zoneColor = s.inZones().reduce(cmrf, "#8888");
-        s.zoneColor = zoneColor;
+      if (zones.length) { 
+        const cmrf = (s:string, p:SkirmaPlayer, i:number) => 
+          `color-mix(in oklch shorter hue, ${p.color} ${100*(1/(i+1))}%, ${s || '#8888'} ${100*((i)/(i+1))}%)`;
 
-        const zoneTop    = s.inZones().filter(p => s.row === p.zone().top);
-        s.zoneTop    = zoneTop.length    ?    zoneTop.reduce(cmrf, "#8888") : undefined;
-        const zoneBottom = s.inZones().filter(p => s.row === p.zone().bottom);
-        s.zoneBottom = zoneBottom.length ? zoneBottom.reduce(cmrf, "#8888") : undefined;
-        const zoneLeft   = s.inZones().filter(p => s.column === p.zone().left);
-        s.zoneLeft   = zoneLeft.length   ?   zoneLeft.reduce(cmrf, "#8888") : undefined;
-        const zoneRight  = s.inZones().filter(p => s.column === p.zone().right);
-        s.zoneRight  = zoneRight.length  ?  zoneRight.reduce(cmrf, "#8888") : undefined;
-      } else {
-        delete s.zoneColor;
+        zoneColor = zones.reduce(cmrf, "#8888");
+        zoneTop    = zones.filter(p => s.row === p.zone()?.top)?.reduce(cmrf, "");
+        zoneBottom = zones.filter(p => s.row === p.zone()?.bottom)?.reduce(cmrf, "");
+        zoneLeft   = zones.filter(p => s.column === p.zone()?.left)?.reduce(cmrf, "");
+        zoneRight  = zones.filter(p => s.column === p.zone()?.right).reduce(cmrf, "");
       }
 
       let move = board.lastMove();
-      if (move && s.row === move.from.row && s.column === move.from.column) {
-        board.all(Square, {traceColor: move.player.color}).forEach(sq => 
-          {delete sq.traceColor; delete sq.traceFigure});
+      let traceColor = '';
+      let attention = '';
+      let alarm = false;
 
-        s.traceColor = move.player.color;
-        s.traceFigure = move.figure;        // does nothing until moveLog has that
-      } else if (move && s.row === move.to.row && s.column === move.to.column) {
-        board.all(Square, {attention: move.player.color}).forEach(sq => 
-          {delete sq.attention; delete sq.alarm});
-
-        s.attention = move.player.color;
-        s.alarm = (move.capture || 'banana');
+      // in N>2p, will need a differentmechanism to see other "recent" moves. 
+      if (move && s.row === move?.from.row && s.column === move?.from.column) {
+        traceColor = move.player.color;
+        // traceFigure = move.figure;     // figure that out later
+      } else if (move && s.row === move?.to.row && s.column === move?.to.column) {
+        attention = move?.player.color;
+        alarm = move?.capture;
       }
 
+      s.appearance({
+        render: () => {
+          // if (zoneColor) {
+            return (
+              <div className="ColorMule" style={{
+                '--zone-color'  : zoneColor,
+                '--zone-top'    : zoneTop,
+                '--zone-bottom' : zoneBottom,
+                '--zone-left'   : zoneLeft,
+                '--zone-right'  : zoneRight,
+                '--trace-color' : traceColor,
+                '--attn-color'  : attention,
+                '--alarm'       : alarm,
+              } as React.CSSProperties }>
+              </div>
+            );
+          // } else {
+          //   return (
+          //     <div className="ColorMule" style={{
+          //       '--trace-color' : traceColor,
+          //       '--attn-color'  : attention,
+          //       '--alarm'       : alarm,
+          //     }}>
+          //     </div>
+          //   );
+          //   // return (<div>{ sq.locString() }</div>);
+          // }
+        }
+      });
     });
 
     // figure display logic
     board.all(Figure).forEach(f => {
       const cpm = {'Q': 9819, 'R': 9814, 'B': 9815, 'N': 9816, 'P': 9817, 'G': 9733};
-      let codePoint = cpm[f.name];
+      let codePoint = cpm[f.name as keyof typeof cpm];
 
-      if (f.agentOf) {
-        f.agentColor = f.agentOf.color;
-        if (f.rank === 'low') codePoint += 6;
-      } else {
-        delete f.agentColor;
-        codePoint = cpm[f.name];
-      }
+      if (f.agentOf && (f.rank === 'low')) codePoint += 6;
 
-      f.icon = String.fromCodePoint(codePoint);
+      const icon = String.fromCodePoint(codePoint);
 
-      // const zoneColor = f.influence().reduce((s, p, i) => `color-mix(in xyz, ${p.color} 50%, ${s} ${50*(i)}%)`, "rgb(none none none / 75%)");
-      // if (f.influence().length) console.log(`got a ${f} with ${zoneColor}`);
-      // if (f.influence().length) f.zoneColor = zoneColor;
-    })
-
-    board.all(Square).appearance({
-      render: (sq) => {
-        if (sq.zoneColor) {
-          return (
-            <div className="ColorMule" style={{
-              '--zone-color'  : sq.zoneColor,
-              '--zone-top'    : sq.zoneTop,
-              '--zone-bottom' : sq.zoneBottom,
-              '--zone-left'   : sq.zoneLeft,
-              '--zone-right'  : sq.zoneRight,
-              '--trace-color' : sq.traceColor,
-              '--attn-color'  : sq.attention,
-              '--alarm'       : sq.alarm,
-            }}>
-            </div>
-          );
-        } else {
-          return (
-            <div className="ColorMule" style={{
-              '--trace-color' : sq.traceColor,
-              '--attn-color'  : sq.attention,
-              '--alarm'       : sq.alarm,
-            }}>
-            </div>
-          );
-          // return (<div>{ sq.locString() }</div>);
-        }
-      }
+      f.appearance({
+        render: () =>
+          <div className="ColorMule" style={{
+            '--agent-color': f.agentOf?.color
+          } as React.CSSProperties }>{icon}</div>
+      });
     });
 
-    board.all(Figure).appearance({
-      render: (fig) =>
-        <div className="ColorMule" style={{
-          '--zone-color': fig.square()?.zoneColor,
-          '--agent-color': (fig.agentColor ? fig.agentColor : '')
-        }}>
-          {fig.icon}
-        </div>
-    });
+    // board.all(Square).appearance({
+    //   render: (sq) => {
+    //     if (sq.zoneColor) {
+    //       return (
+    //         <div className="ColorMule" style={{
+    //           '--zone-color'  : sq.zoneColor,
+    //           '--zone-top'    : sq.zoneTop,
+    //           '--zone-bottom' : sq.zoneBottom,
+    //           '--zone-left'   : sq.zoneLeft,
+    //           '--zone-right'  : sq.zoneRight,
+    //           '--trace-color' : sq.traceColor,
+    //           '--attn-color'  : sq.attention,
+    //           '--alarm'       : sq.alarm,
+    //         }}>
+    //         </div>
+    //       );
+    //     } else {
+    //       return (
+    //         <div className="ColorMule" style={{
+    //           '--trace-color' : sq.traceColor,
+    //           '--attn-color'  : sq.attention,
+    //           '--alarm'       : sq.alarm,
+    //         }}>
+    //         </div>
+    //       );
+    //       // return (<div>{ sq.locString() }</div>);
+    //     }
+    //   }
+    // });
+
+    // board.all(Figure).appearance({
+    //   render: (fig) =>
+    //     <div className="ColorMule" style={{
+    //       '--agent-color': fig.agentOf?.color
+    //     }}>
+    //       {fig.icon}
+    //     </div>
+    // });
 
   }
 });

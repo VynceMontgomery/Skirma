@@ -3,7 +3,6 @@ import {
   createBoardClasses,
   Player,
   Board,
-  ElementFinder,
 } from '@boardzilla/core';
 
 /*
@@ -12,10 +11,10 @@ import {
  * yes, I know.
  */
 
-const knight_units = [[-2,-1], [-2,1], [1,-2], [-1,-2], [2,1], [2,-1], [-1,2], [1,2]];
-const bishop_units = [[1,1], [1,-1], [-1,-1], [-1,1]];
-const rook_units = [[1,0], [-1,0], [0,1], [0,-1]];
-const queen_units = [...rook_units, ...bishop_units];
+const knight_units: [number, number][] = [[-2,-1], [-2,1], [1,-2], [-1,-2], [2,1], [2,-1], [-1,2], [1,2]];
+const bishop_units: [number, number][] = [[1,1], [1,-1], [-1,-1], [-1,1]];
+const rook_units: [number, number][] = [[1,0], [-1,0], [0,1], [0,-1]];
+const queen_units: [number, number][] = [...rook_units, ...bishop_units];
 
 
 // Some pseudo-globals. Eventually, i'd like to move these into something less global, more config-like
@@ -56,6 +55,7 @@ interface SkirmaMove {
 }
 
 // not sure i need this
+// if I do, not sure this is the right way to do it. Tuple?
 interface SkirmaVector {
   v: [number, number];
 }
@@ -67,28 +67,32 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
 
   eliminated: boolean = false;
 
-  highs () {
-    return this.board.first(Space, 'chessboard').all(High, {player: this});
+  highs (): High[] {
+    return this.board.first(Space, 'chessboard')!.all(High, {player: this});
   }
 
-  agents () {
-    return this.board.first(Space, 'chessboard').all(Figure, {agentOf: this});
+  agents (): Figure[] {
+    return this.board.first(Space, 'chessboard')!.all(Figure, {agentOf: this});
   }  
 
-  zoneMemo: {top: number, bottom: number, left: number, right: number} | undefined = undefined;
+  zoneMemo: {top: number; bottom: number; left: number; right: number} | undefined = undefined;
 
   zone (force: boolean = false) {
     if (!force && this.zoneMemo) return this.zoneMemo;
 
     const zoneGuess = {
-      top:    (Math.min(...this.highs().map((f) => f.square()?.row))),
-      bottom: (Math.max(...this.highs().map((f) => f.square()?.row))),
-      left:   (Math.min(...this.highs().map((f) => f.square()?.column))),
-      right:  (Math.max(...this.highs().map((f) => f.square()?.column))),
+      top:    (Math.min(...this.highs().map((f:High) => f.square()!.row))),
+      bottom: (Math.max(...this.highs().map((f:High) => f.square()!.row))),
+      left:   (Math.min(...this.highs().map((f:High) => f.square()!.column))),
+      right:  (Math.max(...this.highs().map((f:High) => f.square()!.column))),
+      // top:    (Math.min(...this.highs().map((f:High) => f.square()?.row).filter((v: number | undefined) => !!v))),
+      // bottom: (Math.max(...this.highs().map((f:High) => f.square()?.row).filter((v: number | undefined) => !!v))),
+      // left:   (Math.min(...this.highs().map((f:High) => f.square()?.column).filter((v: number | undefined) => !!v))),
+      // right:  (Math.max(...this.highs().map((f:High) => f.square()?.column).filter((v: number | undefined) => !!v))),
     }
 
     // I don't think this is necessary, but why remove santy checking?
-    if (['top', 'bottom', 'left', 'right'].some((e) => !zoneGuess[e])) {
+    if (['top', 'bottom', 'left', 'right'].some((e: keyof typeof zoneGuess) => !zoneGuess[e])) {
       this.zoneMemo = undefined;
       return this.zoneMemo;
     } else {
@@ -97,30 +101,45 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
     }
   }
 
-  hasInZone (el) {
-    let loc: Square;
+  // hasInZone (el: Square | Figure) {
+  //   if (!this.zone()) return false;
+  //   let loc: Square;
 
-    if (el.row && el.column) {
-        loc = el;
-    } else {
-        loc = el.container(Square);
-        if (!loc) return false;
-    }
+  //   if (el.row && el.column) {
+  //       loc = el as Square;
+  //   } else if (el.square) {
+  //       loc = el.square()!;
+  //       if (!loc) return false;
+  //   } else {
+  //     return false;
+  //   }
 
-    const {top, bottom, left, right} = this.zone();
+  //   const {top, bottom, left, right} = this.zone()!;
 
-    // remember, rows are low at the top.
-    if (loc.row >= top && loc.row <= bottom
-        && loc.column >= left && loc.column <= right) {
-            return true;
-    }
-    return false;
+  //   // remember, rows are low at the top.
+  //   if (loc.row >= top && loc.row <= bottom
+  //       && loc.column >= left && loc.column <= right) {
+  //           return true;
+  //   }
+  //   return false;
+  // }
+
+  zoneEF () {  // an ElementFinder
+    if (!this.zone()) return false;
+    const {top, bottom, left, right} = this.zone()!;
+
+    return (loc:Square | SkirmaLocation) => (
+      loc.row >= top && loc.row <= bottom
+        && loc.column >= left && loc.column <= right
+    );
   }
 
-  zoneEF (): ElementFinder {
-    const {top, bottom, left, right} = this.zone();
+  zoneTest (loc: Square | SkirmaLocation): boolean {
+    if (!this.zone()) return false;
 
-    return (loc) => (
+    const {top, bottom, left, right} = this.zone()!;
+
+    return (
       loc.row >= top && loc.row <= bottom
         && loc.column >= left && loc.column <= right
     );
@@ -129,20 +148,21 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   // STUB I'm sure this is what generics are for; bone up. But for now:
 
   zoneSquares (): Square[] {
-    return this.board.first('chessboard').all(Square, this.zoneEF());
+    return this.board.first('chessboard')!.all(Square, (s: Square) => !!(this.zoneTest(s)));
   }
 
   zoneFigures (): Figure[] {
-    return this.board.first('chessboard').all(Figure, (f) => [f.square()].filter(this.zoneEF()).length);
+    return this.board.first('chessboard')!.all(Figure, (f: Figure):boolean => !!(f.square() && this.zoneTest(f.square()!)));
   }
 
   zoneLows (): Low[] {
-    return this.board.first('chessboard').all(Low, (f) => [f.square()].filter(this.zoneEF()).length);
+    return this.board.first('chessboard')!.all(Low, (f: Low):boolean => !!(f.square() && this.zoneTest(f.square()!)));
   }
 
   influenced () : Figure[] {
+    const total: Figure[] = [];
     const rabble = this.zoneLows().filter(f => (!f.agentOf || f.agentOf === this));
-    return this.highs().concat(this.agents()).concat(rabble).filter((v, i, a) => i === a.indexOf(v));
+    return total.concat(this.highs()).concat(this.agents()).concat(rabble).filter((v, i, a) => i === a.indexOf(v));
   }
 
   moveFigureFigureOptions() : Figure[] {
@@ -164,6 +184,8 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
     if (remaining.length === 1) {
       this.game.finish(remaining[0]);
     }
+
+  return this.eliminated;
   }
 }
 
@@ -176,7 +198,7 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
   actionName?: string = '';
 
 
-  readonly moveLog: [] = [];
+  readonly moveLog: SkirmaMove[] = [];
   // readonly moveLog: SkirmaMove[] = [];       // some day, maybe
 
   recordMove (move:SkirmaMove) {
@@ -191,9 +213,9 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
 
   amendMove (diff:Partial<SkirmaMove>) {
     if (this.moveLog.length) {
-      const old = this.moveLog.pop();
-      const move = {...old, ...diff}
-      this.moveLog.push(move);                  // FIX comments below may be useful for tracking ref error
+      const old: SkirmaMove = this.moveLog.pop() as SkirmaMove; 
+      const move = {...old, ...diff};             // as SkirmaMove ?
+      this.moveLog.push(move as SkirmaMove);
       // console.log(`amended move number ${this.moveLog.length}:  ${Figure.letter(move.role)}` +
       //    Square.toLocString(move.from) +
       //    (move.capture ? 'x' : '-') +
@@ -201,7 +223,7 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
       //    (move.promote ? '=' + Figure.letter(move.promote) : '')
       //    );
     } else {
-      this.recordMove(diff);
+      this.recordMove(diff as SkirmaMove);
     }
   }
 
@@ -223,6 +245,11 @@ export class Square extends Space {
     return '?abcdefghi'.charAt(loc.column) + (boardSize + 1 - loc.row);
   }
 
+  gridparity: string = ''; // STUB why not: 'odd' | 'even' | '' = '';  // i don't understand.
+
+  row: number;
+  column: number;
+
   // loc (): SkirmaLocation {
   loc () {
     if (! this.row && this.column) console.log(`this has tr ${this.row} tc ${this.column} fwiw, which is bad for `, this);
@@ -231,27 +258,27 @@ export class Square extends Space {
   }
 
   locString (): string {
-    return Square.toLocString(this);
+    return Square.toLocString(this as SkirmaLocation);
     // return 'abcdefghi'.at(this.column) + (boardSize + 1 - this.row);
   }
 
   isEdge (): boolean {
-    return [this.row, this.column].some((v) => [1,boardSize].includes(v));
+    return [this.row || 0, this.column || 0].some((v:number) => [1,boardSize].includes(v));
   }
 
   inZones (): SkirmaPlayer[] {
-    return this.game.players.filter(p => p.hasInZone(this));
+    return this.game.players.filter(p => p.zoneTest(this));
   }
 }
 
-export abstract class Figure extends Piece {
+export class Figure extends Piece {
   readonly role: string;
   // role: 'Queen'|'General'|'Rook'|'Bishop'|'Knight'|'Pawn',
 
   readonly rank: 'high' | 'low';
   // rank (): 'high' | 'low' (this.instanceOf(High) ? 'high' : 'low')
 
-  agentOf?: Player;
+  agentOf?: SkirmaPlayer;
 
   static letter (role: string) {
     if (role === 'Knigt') {
@@ -265,48 +292,59 @@ export abstract class Figure extends Piece {
 
   // do i need this?
   // loc (): SkirmaLocation {
-  loc () {
-    // return {row, column};
-    // console.log(`Agent ${this} currently at `, this.square() , ` - is that bad?`);
-    const {row, column} = this.square();
-    // console.log(`Figure ${this}.loc(): row, ${row}, column, ${column}`);
-    return ({row, column});
+  loc (): SkirmaLocation | undefined {
+    if (this.square()) return this.square() as SkirmaLocation;
+    return undefined;
+    // const {row, column} = this.square();
+    // return ({row, column});
   }
 
   // STUB probably bogus; replace with player.influenced().includes || game.players.filter etc.
-  influence (player?): Player[] | boolean {
-    const influenceList: Player[] = [];
+  influence (player?: SkirmaPlayer): SkirmaPlayer[] | boolean {
+    // const influenceList: SkirmaPlayer[] = [];
 
-    if (this.player) {
-        influenceList.push(this.player);
-    } else if (this.agentOf) {
-        influenceList.push(this.agentOf);
-    } else {
-        influenceList.push(...this.game.players.filter((p) => p.hasInZone(this)));
-    }
+    // if (this.player) {
+    //     influenceList.push(this.player);
+    // } else if (this.agentOf) {
+    //     influenceList.push(this.agentOf);
+    // } else {
+    //     influenceList.push(...this.game.players.filter((p) => p.hasInZone(this)));
+    // }
 
     if (player) {
-        return influenceList.includes(player);
+        return player.influenced().includes(this);
     } else {
-        return influenceList;
+        return this.game.players.filter((p) => p.influenced().includes(this))
     }
   }
 
-  unitMoves (units): Square[] {
-    return units.map (
-      ([r,c]) => this.board.first(Square, {
-        row: this.square().row + r, 
-        column: this.square().column + c, 
-    })).filter((s) => s);    
+  unitMoves (units: [number, number][]): Square[] {
+    const here = this.square();
+    if (!(here && here.row && here.column)) return [];
+
+    const valids: Square[] = [];
+
+    units.forEach(([r,c]) => {
+      let look = this.board.first(Square, {
+        row: here.row! + r, 
+        column: here.column! + c, 
+      });
+
+      if (look) valids.push(look);
+    });
+
+    return valids;
   }
 
-  vectorMoves (vectors): Square[] {
+  vectorMoves (vectors: [number, number][]): Square[] {
     const here = this.square();
+    if (!(here && here.row && here.column)) return [];
+
     const valids: Square[] = [];
 
     vectors.forEach(([r,c]) => {
-      let next = this.board.first(Square, {row: here.row + r, column: here.column + c});
-      while (next) {
+      let next = this.board.first(Square, {row: here.row! + r, column: here.column! + c});  // confirmed 5 lines up. what gives?
+      while (next && next.row && next.column) {
         valids.push(next);
         if (!next.has(Figure)) {
             next = this.board.first(Square, {row: next.row + r, column: next.column + c});
@@ -319,7 +357,9 @@ export abstract class Figure extends Piece {
     return valids;
   }
 
-  validMoves (): Square[]
+  validMoves (): Square[] {
+    return [] as Square[];
+  }
 
   moveFigureDestOptions() : Square[] {
     this.board.playerActionName = 'moveFigure';
@@ -327,15 +367,15 @@ export abstract class Figure extends Piece {
     return this.validMoves();
   }
 
-  moveTo ({player, dest}): void {
-    const capture = dest.first(Figure)?.captured();
+  moveTo ({player, dest}: {player: SkirmaPlayer, dest: Square}): void {
+    const capture = !!(dest.first(Figure)?.captured());
 
-    this.board.recordMove({player, figure: this, from: this.loc(), to: dest.loc(), capture, });
+    this.board.recordMove({player, figure: this, from: this.loc()!, to: dest.loc() as SkirmaLocation, capture, });
     // this.board.recordMove({player, role: this.role, from: this.loc(), to: dest.loc(), capture, });
 
     this.putInto(dest);
 
-    player.agents().forEach(f => delete f.agentOf);
+    player.agents().forEach((f:Figure) => delete f.agentOf);
     this.agentOf = player;
   }
 
@@ -343,7 +383,7 @@ export abstract class Figure extends Piece {
   captured (): boolean {
     if (!(this.loc()?.row && this.loc()?.column)) return false;
 
-    let vic: Player | undefined = undefined;
+    let vic: SkirmaPlayer | undefined = undefined;
 
     if (this.player) {
       vic = this.player;
@@ -351,7 +391,7 @@ export abstract class Figure extends Piece {
       vic = this.agentOf;
     }
 
-    this.putInto(this.board.first('box'));
+    this.putInto(this.board.first('box')!);
 
     if (vic) {
       vic.checkElimination();
@@ -361,12 +401,12 @@ export abstract class Figure extends Piece {
   }
 }
 
-export abstract class High extends Figure {
-  readonly player: Player;
+export class High extends Figure {
+  readonly player: SkirmaPlayer;
   rank: 'high' = 'high';
 }
 
-export abstract class Low extends Figure {
+export class Low extends Figure {
   rank: 'low' = 'low';
   // agentOf: Player | undefined;
 }
@@ -446,24 +486,24 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
   for (const player of game.players) {
     $.box.createMany(3, General, 'G', {player});
     setupGrid.Queen[game.players.turnOrderOf(player)].forEach(
-      ([row, column]) => $.chessboard.atPosition({row, column}).create(Queen, 'Q', {player})
+      ([row, column]) => $.chessboard.atPosition({row, column})?.create(Queen, 'Q', {player})
     );
   }
 
   setupGrid['Rook'].forEach(
-    ([row, column]) => $.chessboard.atPosition({row, column}).create(Rook, 'R')
+    ([row, column]) => $.chessboard.atPosition({row, column})?.create(Rook, 'R')
   );
 
   setupGrid['Bishop'].forEach(
-    ([row, column]) => $.chessboard.atPosition({row, column}).create(Bishop, 'B')
+    ([row, column]) => $.chessboard.atPosition({row, column})?.create(Bishop, 'B')
   );
 
   setupGrid['Knight'].forEach(
-    ([row, column]) => $.chessboard.atPosition({row, column}).create(Knight, 'N')
+    ([row, column]) => $.chessboard.atPosition({row, column})?.create(Knight, 'N')
   );
 
   setupGrid['Pawn'].forEach(
-    ([row, column]) => $.chessboard.atPosition({row, column}).create(Pawn, 'P')
+    ([row, column]) => $.chessboard.atPosition({row, column})?.create(Pawn, 'P')
   );
 
   // spares for promotion
@@ -488,7 +528,10 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
     }).chooseOnBoard(
       'figures',
       () => {
-        return $.chessboard.all(Low, (f) => ((f.square().column > (1+boardSize / 2)) && !f.influence(player)))
+        return $.chessboard.all(Low, (f) => 
+          (((f.square()?.column || 0) > ((1+boardSize) / 2)
+            ) && !(f.influence(player)))
+        )
       },   // for 4p, will have to beter define this; probably jsut by proximity?  maybe a map. *shrug*
       {
         number: game.players.turnOrderOf(player),
@@ -497,14 +540,16 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
     ).do(
       ({figures}) => {
         figures.forEach(f => {
+          const loc = f.loc();
+          if (!loc) return;
           f.agentOf = player;
-          board.recordMove({figure: f, from: f.loc(), to: f.loc(), capture: false, player});
+          board.recordMove({figure: f, from: loc, to: loc, capture: false, player});
           // board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
         });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
       ({figures}) => ({
-        locString: figures.map(f => f.square().locString()).join(', '),
+        locString: figures.map(f => f.square()!.locString()).join(', '),
         s: figures.length != 1 ? 's' : '',
     }),
     ),
@@ -525,14 +570,14 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       `{{ player }} moves {{ role }} {{start}} to {{end}}{{ capture }}.`,
       ({figure, dest}) => ({
         role: figure.role,
-        start: figure.square().locString(),
+        start: figure.square()!.locString(),
         end: dest.locString(),
-        capture: (dest.has(Figure) ? `, capturing ${dest.first(Figure).role}.` : ``),
+        capture: (dest.has(Figure) ? `, capturing ${dest.first(Figure)?.role}.` : ``),
       })
     ).do(({figure, dest}) => {
       figure.moveTo({player, dest});
 
-      if (figure.role === 'Pawn' && dest.isEdge() && !player.hasInZone(dest)) {
+      if (figure.role === 'Pawn' && dest.isEdge() && !player.zoneTest(dest)) {
         game.followUp({name: 'promote'});
       }
 
@@ -549,7 +594,6 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
 
     resign: player => action({
       prompt: 'Are you sure?',
-      skipIf: 'never',
     }).chooseFrom(
       'resign',
       ['Resign'],
@@ -598,11 +642,14 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       }
     ).do(({order}) => {
       const lastMove = board.lastMove();
+      if (!lastMove) return;
+
       const baby = $.chessboard.first(Pawn, (f) => (f.square()?.row == lastMove.to.row && 
                                                  f.square()?.column == lastMove.to.column));
-      const dest = baby.square();
+      const dest = baby?.square();
+      if (! (baby && dest)) return;
 
-      let upgrade;
+      let upgrade: Figure | undefined;
 
       if (order === 'skip') {
         return;
@@ -611,10 +658,13 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       } else {
         upgrade = $.box.first(Figure, {role: order});
       }
+
+      if (!upgrade) return;
+
       upgrade.putInto(dest);
       upgrade.agentOf = player;
       baby.putInto($.box);
-      board.amendMove({promote: upgrade});          // FIX causes ref error
+      board.amendMove({promote: upgrade});
       // board.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
