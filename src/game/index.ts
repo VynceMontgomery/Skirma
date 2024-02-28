@@ -1,8 +1,8 @@
 import {
   createGame,
-  createBoardClasses,
+  createGameClasses,
   Player,
-  Board,
+  Game,
 } from '@boardzilla/core';
 
 /*
@@ -60,7 +60,7 @@ interface SkirmaVector {
   v: [number, number];
 }
 
-export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
+export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaGame> {
   /**
    * Any properties of your players that are specific to your game go here
    */
@@ -68,11 +68,11 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   eliminated: boolean = false;
 
   highs (): High[] {
-    return this.board.first(Space, 'chessboard')!.all(High, {player: this});
+    return this.game.first(Space, 'chessboard')!.all(High, {player: this});
   }
 
   agents (): Figure[] {
-    return this.board.first(Space, 'chessboard')!.all(Figure, {agentOf: this});
+    return this.game.first(Space, 'chessboard')!.all(Figure, {agentOf: this});
   }  
 
   zoneMemo: {top: number; bottom: number; left: number; right: number} | undefined = undefined;
@@ -101,29 +101,6 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
     }
   }
 
-  // hasInZone (el: Square | Figure) {
-  //   if (!this.zone()) return false;
-  //   let loc: Square;
-
-  //   if (el.row && el.column) {
-  //       loc = el as Square;
-  //   } else if (el.square) {
-  //       loc = el.square()!;
-  //       if (!loc) return false;
-  //   } else {
-  //     return false;
-  //   }
-
-  //   const {top, bottom, left, right} = this.zone()!;
-
-  //   // remember, rows are low at the top.
-  //   if (loc.row >= top && loc.row <= bottom
-  //       && loc.column >= left && loc.column <= right) {
-  //           return true;
-  //   }
-  //   return false;
-  // }
-
   zoneEF () {  // an ElementFinder
     if (!this.zone()) return false;
     const {top, bottom, left, right} = this.zone()!;
@@ -148,15 +125,15 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   // STUB I'm sure this is what generics are for; bone up. But for now:
 
   zoneSquares (): Square[] {
-    return this.board.first('chessboard')!.all(Square, (s: Square) => !!(this.zoneTest(s)));
+    return this.game.first('chessboard')!.all(Square, (s: Square) => !!(this.zoneTest(s)));
   }
 
   zoneFigures (): Figure[] {
-    return this.board.first('chessboard')!.all(Figure, (f: Figure):boolean => !!(f.square() && this.zoneTest(f.square()!)));
+    return this.game.first('chessboard')!.all(Figure, (f: Figure):boolean => !!(f.square() && this.zoneTest(f.square()!)));
   }
 
   zoneLows (): Low[] {
-    return this.board.first('chessboard')!.all(Low, (f: Low):boolean => !!(f.square() && this.zoneTest(f.square()!)));
+    return this.game.first('chessboard')!.all(Low, (f: Low):boolean => !!(f.square() && this.zoneTest(f.square()!)));
   }
 
   influenced () : Figure[] {
@@ -166,8 +143,8 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   }
 
   moveFigureFigureOptions() : Figure[] {
-    this.board.playerActionName = 'moveFigure';
-    this.board.actionName = 'figure';
+    this.game.playerActionName = 'moveFigure';
+    this.game.actionName = 'figure';
     return this.influenced();
   }
 
@@ -189,7 +166,7 @@ export class SkirmaPlayer extends Player<SkirmaPlayer, SkirmaBoard> {
   }
 }
 
-class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
+class SkirmaGame extends Game<SkirmaPlayer, SkirmaGame> {
   /**
    * Any overall properties of your game go here
    */
@@ -232,7 +209,7 @@ class SkirmaBoard extends Board<SkirmaPlayer, SkirmaBoard> {
   }
 }
 
-const { Space, Piece } = createBoardClasses<SkirmaPlayer, SkirmaBoard>();
+const { Space, Piece } = createGameClasses<SkirmaPlayer, SkirmaGame>();
 
 export { Space };
 
@@ -325,7 +302,7 @@ export class Figure extends Piece {
     const valids: Square[] = [];
 
     units.forEach(([r,c]) => {
-      let look = this.board.first(Square, {
+      let look = this.game.first(Square, {
         row: here.row! + r, 
         column: here.column! + c, 
       });
@@ -343,11 +320,11 @@ export class Figure extends Piece {
     const valids: Square[] = [];
 
     vectors.forEach(([r,c]) => {
-      let next = this.board.first(Square, {row: here.row! + r, column: here.column! + c});  // confirmed 5 lines up. what gives?
+      let next = this.game.first(Square, {row: here.row! + r, column: here.column! + c});  // confirmed 5 lines up. what gives?
       while (next && next.row && next.column) {
         valids.push(next);
         if (!next.has(Figure)) {
-            next = this.board.first(Square, {row: next.row + r, column: next.column + c});
+            next = this.game.first(Square, {row: next.row + r, column: next.column + c});
         } else {
             next = undefined;
         }
@@ -362,16 +339,16 @@ export class Figure extends Piece {
   }
 
   moveFigureDestOptions() : Square[] {
-    this.board.playerActionName = 'moveFigure';
-    this.board.actionName = 'dest';
+    this.game.playerActionName = 'moveFigure';
+    this.game.actionName = 'dest';
     return this.validMoves();
   }
 
   moveTo ({player, dest}: {player: SkirmaPlayer, dest: Square}): void {
     const capture = !!(dest.first(Figure)?.captured());
 
-    this.board.recordMove({player, figure: this, from: this.loc()!, to: dest.loc() as SkirmaLocation, capture, });
-    // this.board.recordMove({player, role: this.role, from: this.loc(), to: dest.loc(), capture, });
+    this.game.recordMove({player, figure: this, from: this.loc()!, to: dest.loc() as SkirmaLocation, capture, });
+    // this.game.recordMove({player, role: this.role, from: this.loc(), to: dest.loc(), capture, });
 
     this.putInto(dest);
 
@@ -391,7 +368,7 @@ export class Figure extends Piece {
       vic = this.agentOf;
     }
 
-    this.putInto(this.board.first('box')!);
+    this.putInto(this.game.first('box')!);
 
     if (vic) {
       vic.checkElimination();
@@ -446,15 +423,15 @@ export class Pawn extends Low {
 }
 
 
-export default createGame(SkirmaPlayer, SkirmaBoard, game => {
+export default createGame(SkirmaPlayer, SkirmaGame, game => {
 
-  const { board, action } = game;
+  const { action } = game;
   const { playerActions, loop, eachPlayer } = game.flowCommands;
 
   /**
    * Register all custom pieces and spaces
    */
-  board.registerClasses(
+  game.registerClasses(
     Square,
     Figure, High, Low, 
     Queen, General, Rook, Bishop, Knight, Pawn, 
@@ -464,7 +441,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
    * Create your game board's layout and all included pieces.
    */
 
-  board.create(Space, 'chessboard');
+  game.create(Space, 'chessboard');
   $.chessboard.createGrid({
     rows: boardSize,
     columns: boardSize,
@@ -482,7 +459,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
     });
   });
 
-  board.create(Space, 'box');
+  game.create(Space, 'box');
   $.box.onEnter(Figure, f => delete f.agentOf);
 
   for (const player of game.players) {
@@ -545,8 +522,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
           const loc = f.loc();
           if (!loc) return;
           f.agentOf = player;
-          board.recordMove({figure: f, from: loc, to: loc, capture: false, player});
-          // board.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
+          game.recordMove({figure: f, from: loc, to: loc, capture: false, player});
+          // game.recordMove({role: f.role, from: f.loc(), to: f.loc(), capture: false, player});
         });
     }).message(
       `{{ player }} designates {{ figures }} at {{ locString }} to be their agent{{ s }}.`, 
@@ -584,8 +561,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       }
 
       // cleanup action context variables
-      board.playerActionName = '';
-      board.actionName = '';
+      game.playerActionName = '';
+      game.actionName = '';
 
       // STUB figure.influence?
       if (! $.chessboard.all(Low).some((f) => !player.influenced().includes(f))) {
@@ -643,7 +620,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
         return opts;
       }
     ).do(({order}) => {
-      const lastMove = board.lastMove();
+      const lastMove = game.lastMove();
       if (!lastMove) return;
 
       const baby = $.chessboard.first(Pawn, (f) => (f.square()?.row == lastMove.to.row && 
@@ -666,8 +643,8 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       upgrade.putInto(dest);
       upgrade.agentOf = player;
       baby.putInto($.box);
-      board.amendMove({promote: upgrade});
-      // board.amendMove({promote: upgrade.role});
+      game.amendMove({promote: upgrade});
+      // game.amendMove({promote: upgrade.role});
     }).message(
       `{{ player }} {{promotion}}`, 
       ({order}) => ({ promotion: ((order === 'skip') ? `chose not to promote.` : `promoted the pawn to a ${ order }.`) }),
@@ -687,7 +664,7 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
       }),
     }),
 
-    () => board.phase = 1,
+    () => game.phase = 1,
 
     loop(
       eachPlayer({

@@ -2,7 +2,7 @@ import { expect, test, beforeEach } from 'vitest'
 import { TestRunner } from "@boardzilla/core";
 import { default as setup } from '../src/game/index.js';
 
-let runner: TestRunner<ReturnType<typeof setup>['players'][0], ReturnType<typeof setup>['board']>
+let runner: TestRunner<ReturnType<typeof setup>['players'][0], ReturnType<typeof setup>['game']>
 
 beforeEach(() => {
   runner = new TestRunner(setup);

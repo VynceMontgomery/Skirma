@@ -6,16 +6,16 @@ import './style.scss';
 import '@boardzilla/core/index.css';
 
 render(setup, {
-  layout: board => {
-    board.appearance({
+  layout: game => {
+    game.appearance({
       render: () => 
       <style>
-      --player0-color: {board.game.players[0].color};
-      --player1-color: {board.game.players[1].color};
+      --player0-color: {game.players[0].color};
+      --player1-color: {game.players[1].color};
       </style>
     });
 
-    board.layout('box', {
+    game.layout('box', {
       // aspectRatio: 5,
       area: {
         top: 5,
@@ -25,7 +25,7 @@ render(setup, {
       },
     });
 
-    board.layout('chessboard', {
+    game.layout('chessboard', {
       aspectRatio: 1,
       area: {
         top: 18,
@@ -35,11 +35,11 @@ render(setup, {
       },
     });
 
-    board.all(Space, 'box').appearance({
+    game.all(Space, 'box').appearance({
       render: () =>
       <div style={{
-        '--player0-color': board.game.players[0].color,
-        '--player1-color': board.game.players[1].color,
+        '--player0-color': game.players[0].color,
+        '--player1-color': game.players[1].color,
       } as React.CSSProperties }>Skirma</div>
       ,
 
@@ -69,34 +69,34 @@ render(setup, {
       </>
     })
 
-    board.all(Space, 'box').all(Figure).appearance({
+    game.all(Space, 'box').all(Figure).appearance({
       render: () => null
     })
 
-    board.all(Space, 'box').layout(Figure, {
+    game.all(Space, 'box').layout(Figure, {
       aspectRatio: 1,
     })
 
-    board.all(Space, 'chessboard').appearance({
+    game.all(Space, 'chessboard').appearance({
       render: () => null
     })
 
-    board.all(Space, 'chessboard').layout(Square, {
+    game.all(Space, 'chessboard').layout(Square, {
       aspectRatio: 1,
     })
 
-    board.layout(Space, {
+    game.layout(Space, {
       gap: 1,
       margin: 1
     });
 
-    board.all(Space).layout(Figure, {
+    game.all(Space).layout(Figure, {
       gap: 1,
       margin: .25,
     });
 
     // square display logic
-    board.all(Square).forEach(s => {
+    game.all(Square).forEach(s => {
       // s.gridparity = s.gridparity || ['even', 'odd'].at(((s.row!) + (s.column!))%2)!;
 
       const zones = s.inZones();
@@ -117,7 +117,7 @@ render(setup, {
         zoneRight  = zones.filter(p => s.column === p.zone()?.right).reduce(cmrf, "");
       }
 
-      let move = board.lastMove();
+      let move = game.lastMove();
       let traceColor = '';
       let attention = '';
       let alarm = false;
@@ -163,7 +163,7 @@ render(setup, {
     });
 
     // figure display logic
-    board.all(Figure).forEach(f => {
+    game.all(Figure).forEach(f => {
       const cpm = {'Q': 9819, 'R': 9814, 'B': 9815, 'N': 9816, 'P': 9817, 'G': 9733};
       let codePoint = cpm[f.name as keyof typeof cpm];
 
@@ -179,7 +179,7 @@ render(setup, {
       });
     });
 
-    // board.all(Square).appearance({
+    // game.all(Square).appearance({
     //   render: (sq) => {
     //     if (sq.zoneColor) {
     //       return (
@@ -209,7 +209,7 @@ render(setup, {
     //   }
     // });
 
-    // board.all(Figure).appearance({
+    // game.all(Figure).appearance({
     //   render: (fig) =>
     //     <div className="ColorMule" style={{
     //       '--agent-color': fig.agentOf?.color
