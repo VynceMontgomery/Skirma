@@ -97,7 +97,7 @@ render(setup, {
 
     // square display logic
     board.all(Square).forEach(s => {
-      s.gridparity = s.gridparity || ['even', 'odd'].at(((s.row!) + (s.column!))%2)!;
+      // s.gridparity = s.gridparity || ['even', 'odd'].at(((s.row!) + (s.column!))%2)!;
 
       const zones = s.inZones();
       let zoneColor: string = '';

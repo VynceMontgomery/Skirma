@@ -471,7 +471,9 @@ export default createGame(SkirmaPlayer, SkirmaBoard, game => {
     style: 'square'
   }, Square, 'square');
 
+
   $.chessboard.all(Square).forEach(sq => {
+    sq.gridparity = ['even', 'odd'].at(((sq.row) + (sq.column))%2)!
     sq.onEnter(High, h => {
       delete h.player.zoneMemo;
     });
